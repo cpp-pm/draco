@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-project(draco C CXX)
+project(draco 
+  LANGUAGES C CXX
+  VERSION "1.3.4")
 
 set(draco_root "${CMAKE_CURRENT_SOURCE_DIR}")
 set(draco_src_root "${draco_root}/src/draco")
@@ -22,7 +24,7 @@ include("${draco_root}/cmake/sanitizers.cmake")
 include("${draco_root}/cmake/util.cmake")
 
 # Draco requires C++11 support.
-require_cxx_flag_nomsvc("-std=c++11" YES)
+require_cxx_flag_nomsvc("-std=c++11" NO)
 
 option(ENABLE_CCACHE "Enable ccache support." OFF)
 option(ENABLE_DISTCC "Enable distcc support." OFF)
@@ -1104,6 +1106,29 @@ else ()
     target_link_libraries(draco_tests draco gtest)
   endif ()
 
+  ### Install (https://github.com/forexample/package-example) ###
+  set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+  set(config_install_dir "lib/cmake/${PROJECT_NAME}")
+  set(include_install_dir "include")
+
+  set(version_config "${generated_dir}/${PROJECT_NAME}ConfigVersion.cmake")
+  set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
+  set(targets_export_name "${PROJECT_NAME}Targets")
+  set(namespace "${PROJECT_NAME}::")
+
+  include(CMakePackageConfigHelpers)
+  write_basic_package_version_file(
+    "${version_config}" COMPATIBILITY AnyNewerVersion
+  )
+
+  # Note: use 'targets_export_name'
+  configure_package_config_file(
+    "cmake/Config.cmake.in"
+    "${project_config}"
+    INSTALL_DESTINATION "${config_install_dir}"
+  )
+
   # Collect all of the header files in the tree, and add an install rule for
   # each.
   file(GLOB_RECURSE draco_headers RELATIVE ${draco_root}/src/draco "*.h")
@@ -1124,53 +1149,80 @@ else ()
 
   # Add install rules for lib and executable targets.
   install(TARGETS dracodec dracoenc draco
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+          EXPORT "${targets_export_name}"
+          INCLUDES DESTINATION "${include_install_dir}"
+          RUNTIME DESTINATION "bin"
+          LIBRARY DESTINATION "lib"
+          ARCHIVE DESTINATION "lib")
   if (BUILD_UNITY_PLUGIN)
     install(TARGETS dracodec_unity
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+            EXPORT "${targets_export_name}"
+            INCLUDES DESTINATION "${include_install_dir}"
+            RUNTIME DESTINATION "bin"
+            LIBRARY DESTINATION "lib"
+            ARCHIVE DESTINATION "lib")
   endif ()
   if (BUILD_MAYA_PLUGIN)
     install(TARGETS draco_maya_wrapper
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+            EXPORT "${targets_export_name}"    
+            INCLUDES DESTINATION "${include_install_dir}"
+            RUNTIME DESTINATION "bin"
+            LIBRARY DESTINATION "lib"
+            ARCHIVE DESTINATION "lib")
   endif ()
 
-  install(TARGETS draco_decoder draco_encoder DESTINATION
-          "${CMAKE_INSTALL_PREFIX}/bin")
+  install(TARGETS draco_decoder draco_encoder 
+          EXPORT "${targets_export_name}"
+          INCLUDES DESTINATION "${include_install_dir}"
+          RUNTIME DESTINATION "bin"
+          LIBRARY DESTINATION "lib"
+          ARCHIVE DESTINATION "lib")
 
-  # Generate a CMake config file.
-  set(draco_include_install_dir "include/draco")
-  set(draco_lib_install_dir "lib")
-  set(draco_script_install_dir
-      "${CMAKE_INSTALL_PREFIX}/${draco_lib_install_dir}/draco/cmake")
-  set(draco_config_in_file "${draco_root}/cmake/DracoConfig.cmake")
-  set(draco_config_out_file "${draco_build_dir}/DracoConfig.cmake")
+  install(
+    FILES "${project_config}" "${version_config}"
+    DESTINATION "${config_install_dir}"
+  )
 
-  configure_package_config_file(
-      "${draco_config_in_file}"
-      "${draco_config_out_file}"
-      NO_CHECK_REQUIRED_COMPONENTS_MACRO
-      INSTALL_DESTINATION "${draco_lib_install_dir}/draco/cmake"
-      PATH_VARS draco_include_install_dir draco_lib_install_dir)
-  write_basic_package_version_file(
-      "${draco_build_dir}/DracoConfigVersion.cmake"
-      VERSION ${draco_version}
-      COMPATIBILITY SameMajorVersion)
+  install(
+    EXPORT "${targets_export_name}"
+    NAMESPACE "${namespace}"
+    DESTINATION "${config_install_dir}"
+  )
+          
+  # # Generate a CMake config file.
+  # set(draco_include_install_dir "include/draco")
+  # set(draco_lib_install_dir "lib")
+  # set(draco_script_install_dir
+      # "${CMAKE_INSTALL_PREFIX}/${draco_lib_install_dir}/draco/cmake")
+  # set(draco_config_in_file "${draco_root}/cmake/DracoConfig.cmake")
+  # set(draco_config_out_file "${draco_build_dir}/DracoConfig.cmake")
 
-  # Read in the config file and rewrite it with a version string included.
-  file(STRINGS "${draco_config_out_file}" draco_config_strings)
-  file(WRITE "${draco_config_out_file}"
-       "set(draco_VERSION \"${draco_version}\")\n")
-  foreach (config_string ${draco_config_strings})
-    file(APPEND "${draco_config_out_file}" "${config_string}\n")
-  endforeach ()
+  # configure_package_config_file(
+      # "${draco_config_in_file}"
+      # "${draco_config_out_file}"
+      # NO_CHECK_REQUIRED_COMPONENTS_MACRO
+      # INSTALL_DESTINATION "${draco_lib_install_dir}/draco/cmake"
+      # PATH_VARS draco_include_install_dir draco_lib_install_dir)
+  # write_basic_package_version_file(
+      # "${draco_build_dir}/DracoConfigVersion.cmake"
+      # VERSION ${draco_version}
+      # COMPATIBILITY SameMajorVersion)
 
-  # Add install rules for CMake helper scripts.
-  set(draco_cmake_helper_scripts
-      "${draco_root}/cmake/FindDraco.cmake"
-      "${draco_build_dir}/DracoConfig.cmake"
-      "${draco_build_dir}/DracoConfigVersion.cmake")
-  install(FILES ${draco_cmake_helper_scripts}
-          DESTINATION "${draco_script_install_dir}")
+  # # Read in the config file and rewrite it with a version string included.
+  # file(STRINGS "${draco_config_out_file}" draco_config_strings)
+  # file(WRITE "${draco_config_out_file}"
+       # "set(draco_VERSION \"${draco_version}\")\n")
+  # foreach (config_string ${draco_config_strings})
+    # file(APPEND "${draco_config_out_file}" "${config_string}\n")
+  # endforeach ()
+
+  # # Add install rules for CMake helper scripts.
+  # set(draco_cmake_helper_scripts
+      # "${draco_root}/cmake/FindDraco.cmake"
+      # "${draco_build_dir}/DracoConfig.cmake"
+      # "${draco_build_dir}/DracoConfigVersion.cmake")
+  # install(FILES ${draco_cmake_helper_scripts}
+          # DESTINATION "${draco_script_install_dir}")
 
   # Some generators complain about unknown link language for header only
   # targets. Silence the harmless warnings/errors with some dummy source files.
