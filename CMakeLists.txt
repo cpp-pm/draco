@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
 # Draco requires C++11.
-set(CMAKE_CXX_STANDARD 11)
-project(draco C CXX)
+# HUNTER: Don't set the standard in the project, but in the toolchain.
+#set(CMAKE_CXX_STANDARD 11)
+# HUNTER: Use the correct version here
+project(draco
+  LANGUAGES C CXX
+  VERSION "1.4.1")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -22,7 +26,8 @@ if("${draco_root}" STREQUAL "${draco_build}")
 endif()
 
 include(CMakePackageConfigHelpers)
-include(FindPythonInterp)
+# HUNTER: Only emscripten build needs Python, so move it there.
+#include(FindPythonInterp)
 include("${draco_root}/cmake/draco_build_definitions.cmake")
 include("${draco_root}/cmake/draco_cpu_detection.cmake")
 include("${draco_root}/cmake/draco_emscripten.cmake")
