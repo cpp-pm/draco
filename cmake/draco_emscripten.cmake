@@ -4,6 +4,8 @@ endif() # DRACO_CMAKE_DRACO_EMSCRIPTEN_CMAKE_
 
 # Checks environment for Emscripten prerequisites.
 macro(draco_check_emscripten_environment)
+  # HUNTER: Find Python here instead of globally.
+  include(FindPythonInterp)
   if(NOT PYTHONINTERP_FOUND)
     message(
       FATAL_ERROR
